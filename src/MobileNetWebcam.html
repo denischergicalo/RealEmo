@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@0.13.0"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <style>
+        #wrapper {
+            text-align: center;
+            margin: 10px auto;
+        }
+
+        #overlay {
+            width: 550px;
+        }
+
+        #output_image {
+            width: 550px;
+        }
+        .far_far_away {
+            position: absolute !important;
+			top: -9999px !important;
+			left: -9999px !important;
+        }
+		.inline{
+			display:inline-block;
+		}
+    </style>
+</head>
+
+<body>
+	<canvas id="canvas"></canvas>
+	
+	<div style="display:none;">
+		<img id=0 src="/images/angry.png">
+		<img id=1 src="/images/disgust.png">
+		<img id=2 src="/images/fear.png">
+		<img id=3 src="/images/happy.png">
+		<img id=4 src="/images/sad.png">
+		<img id=5 src="/images/surprise.png">
+		<img id="im" src="/images/im.jpg">
+	</div>
+	
+    <center style="padding:10px; margin:5px">
+        <h4>
+            <span id="status">Model Loading ...</span>
+        </h4>
+    </center>
+    <center style="padding:10px">
+        <button type="button" id='start' class="btn btn-outline-primary" onclick='startVideo()'>Start Video</button>
+    </center>
+	<center style="padding:10px">
+        <button type="button" id='start_picture' class="btn btn-outline-primary" onclick='startPicture()'>Start Picture</button>
+    </center>
+	 
+    <div class="far_far_away">
+        <center><span id="original_video"></span></center>
+        <video id='video' width="500px"></video>
+    </div> 
+
+    <div class="far_far_away">
+        <center><span id="emotion_video"></span></center>
+        <canvas id="canvas" src="" style=" margin-top:10px;" />
+    </div>
+    
+</body>
+<script>
+    // check using phone or not
+    if (/Android|webOS|iPhone|iPod|BlackBerry/i.test(navigator.userAgent)) {
+        alert('Sorry, this website not support mobile divices currently.');
+        history.back();
+    }
+
+    // check using chrome
+    if (!window.chrome) {
+        if (confirm('This website needs Chrome browser!!!')) {
+            closewin();
+        } else {
+            history.back();
+        }
+    }
+
+    var constraints = {
+        video: true
+    };
+	var picture = false;
+	
+    
+	var $body = document.querySelector('body');
+    //    var status = document.getElementById('status');
+    
+	const emotion_labels = ["angry", "disgust", "fear", "happy", "sad", "surprise", "neutral"];
+	const position_of_emotions2 = tf.tensor([[0.5,1],[0.5,1],[0,1],[1,0.5],[0,0],[0,1],[0.6,0.4]]);
+	
+    const emotion_colors = ["#ff0000", "#00a800", "#ff4fc1", "#ffe100", "#306eff", "#ff9d00", "#7c7c7c"];
+    var offset_x = 15;
+    var offset_y = 40;
+
+    loadModel('../models/mobilenetv1_models/model.json');
+    // create model
+    async function createModel(path) {
+        let model_tmp = await tf.loadModel(path);
+        return model_tmp;
+    }
+
+    // load models
+    async function loadModel(path) {
+        var status = document.getElementById('status');
+        //        status.innerText = "Model Loading ..."
+        model = await createModel(path);
+
+        status.innerText = "Model Loaded !!!";
+    }
+
+
+    function createVideoElement() {
+        let $video = document.createElement('video');
+        $video.style.maxWidth = '100vw';
+        $video.style.width = '100vw';
+        $video.style.maxHeight = '0vh';
+        $body.appendChild($video);
+        return $video;
+    }
+
+    function handleError(error) {
+        if (error.name === 'DevicesNotFoundError') {
+            alert('No camera detected. <br> Do you have any camera connected?');
+        } else if (error.name === 'NotAllowedError') {
+            alert('You have to allow camera access in order to run this experiment.');
+        } else if (navigator.userAgent.indexOf('Chrome') > -1) {
+            alert('Error. <br> Enable experimental features on chrome://flags/#enable-experimental-web-platform-features');
+        } else {
+            alert('Error. <br> Does your browser supports FaceDetector API?');
+        }
+        console.error(error)
+    }
+
+    function createCanvas(video) {
+
+        const canvas = document.getElementById('canvas');
+        const videoCompStyle = window.getComputedStyle(video);
+        canvas.width = videoCompStyle.width.replace('px', '');
+        canvas.height = videoCompStyle.height.replace('px', '');
+		console.log('canvas.width = '+canvas.width+", canvas.height = "+canvas.height);
+        //        canvas.style.display = 'none'
+        document.querySelector('body').appendChild(canvas);
+
+        return canvas;
+    }
+	
+	let faces = [];
+	const faceDetector = new window.FaceDetector({
+            maxDetectedFaces: 5
+        })
+    let isDetectingFaces = false;
+    let hideTimeout;
+	
+	im = document.getElementById("im")
+	emotion_images = []
+	for (let i = 0; i < 6; i++) {emotion_images.push(document.getElementById(i));}
+	coef_position_images =[[0,-0.1],[0.1,0.4],[0.7,-0.2],[0.6,0.4],[0.2,-0.3],[-0.2,-0.2]]
+	coef_size_images = [0.3,0.3,0.3,0.45,0.6,0.3]
+	coef_sensitivity = [0.1,0.3,0.1,0.1,0.1,0.1]
+	coef_color = [1,1,1,0.5,1,1]
+	//initial emotion
+	var seq_of_emotions = [];
+	var length = 0
+	em = []
+	//initial position analyze window
+	let s_x = -999;
+    let s_y = -999;
+    let s_w = 100;
+    let s_h = 100;
+	function draw_emotion(context) {
+		
+		for (let i = 0; i < 6; i++) {
+			context.globalAlpha  = 1-coef_color[i]*(1-em[i]);
+			if(em[i]>coef_sensitivity[i]){
+				context.drawImage(emotion_images[i], s_x+s_w*coef_position_images[i][0], s_y+s_h*coef_position_images[i][1], coef_size_images[i]*s_w, coef_size_images[i]*s_w);
+				
+				if(i == 3){
+					context.drawImage(emotion_images[i], s_x+s_w*(1-coef_position_images[i][0]-coef_size_images[i]), s_y+s_h*coef_position_images[i][1], coef_size_images[i]*s_w,coef_size_images[i]*s_w);
+				}
+			}
+		}
+		context.globalAlpha  = 1;
+	}
+    function createDrawFunction() {
+		
+		
+		
+		return async function draw(canvas, video) {
+			if(picture){console.log('picture');}
+            if(!picture){window.requestAnimationFrame(() => draw(canvas, video));}
+            const context = canvas.getContext('2d');
+            const videoCompStyle = window.getComputedStyle(video);
+            const videoWidth = videoCompStyle.width.replace('px', '');
+            const videoHeight = videoCompStyle.height.replace('px', '');
+            context.drawImage(video, 0, 0, videoWidth, videoHeight);
+            //            context.clearRect(0, 0, canvas.width, canvas.height);
+            //            clearTimeout(hideTimeout)
+            if (faces.length) {
+
+                //                let canvas = document.getElementById('canvas')
+                //                let scale = 1;
+
+                for (var i = 0; i < faces.length; i++) {
+                    var item = faces[i].boundingBox;
+                    //                    console.log(item)
+                    s_x = Math.floor(item.x - offset_x / 2);
+                    s_y = Math.floor(item.y - offset_y / 2);
+                    s_w = Math.floor(item.width + offset_x);
+                    s_h = Math.floor(item.height + offset_y);
+
+                    let cT = context.getImageData(s_x, s_y, s_w, s_h);
+                    cT = preprocess(cT);
+                    z = model.predict(cT);
+					em = [];
+					for (let i = 0; i < 7; i++) {em.push(z.dataSync()[i]);}
+					length = seq_of_emotions.push(em);
+					
+					draw_emotion(context)
+                }
+            } else {
+                console.log('NO FACE');
+                //                status.innerHTML = "NO FACE";
+            }
+			
+			draw_emotion(context)
+			
+            if (isDetectingFaces) {
+                return;
+            }
+
+            isDetectingFaces = true;
+			faces = await faceDetector.detect(canvas);
+            isDetectingFaces = false;
+            var status = document.getElementById('status');
+            status.innerHTML = "Running the model ... ";
+        }
+    }
+
+    function preprocess(imgData) {
+        return tf.tidy(() => {
+            let tensor = tf.fromPixels(imgData).toFloat();
+
+            tensor = tensor.resizeBilinear([100, 100]);
+
+            tensor = tf.cast(tensor, 'float32');
+            const offset = tf.scalar(255.0);
+            // Normalize the image 
+            const normalized = tensor.div(offset);
+            //We add a dimension to get a batch shape 
+            const batched = normalized.expandDims(0);
+            return batched;
+        })
+    }
+
+
+    function playCameraOnVideo(video) {
+        return navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: 'user',
+                    frameRate: 60
+                },
+                audio: false
+            })
+            .then(srcObject => video.srcObject = srcObject)
+            .then(() => video.play())
+    }
+
+    async function main(video) {
+        const video_canvas = createCanvas(video);
+        const draw = createDrawFunction();
+        draw(video_canvas, video);
+    }
+	
+	async function drawPicture(picture) {
+        const video_canvas = createCanvas(picture);
+        const draw = createDrawFunction();
+        draw(video_canvas, picture);
+    }
+	
+	
+	
+    function startVideo() {
+        let elem1 = document.getElementById('start');
+		elem1.parentNode.removeChild(elem1);
+		let elem2 = document.getElementById('start_picture');
+        elem2.parentNode.removeChild(elem2);
+        var status = document.getElementById('status');
+        status.innerHTML = "Initializing the camera ... ";
+		
+
+        var ori = document.getElementById("original_video");
+        //        var emo = document.getElementById("emotion_video");
+        ori.innerHTML = "Original: "
+        //        emo.innerHTML = "Result : "
+        playCameraOnVideo(video)
+            .then(() => main(video))
+            .catch(handleError)
+
+    }
+	function startPicture(){
+		let elem1 = document.getElementById('start');
+		elem1.parentNode.removeChild(elem1);
+		let elem2 = document.getElementById('start_picture');
+        elem2.parentNode.removeChild(elem2);
+		status.innerHTML = "Create Picture ...";
+		picture = true;
+		drawPicture(im);
+		
+	}
+</script>
+
+</html>
