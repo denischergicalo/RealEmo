@@ -1,3 +1,5 @@
+Створено в рамках хакатону "November Hackathon Online від Hackathon Expert Group"
+
 real-time відтворення аніме-емоцій через браузер
 
 Інструкція:
