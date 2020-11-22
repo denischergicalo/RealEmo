@@ -2,6 +2,9 @@ real-time відтворення аніме-емоцій через браузе
 
 Інструкція:
 
+поставити флажок enable в браузері:
+0)chrome://flags/#enable-experimental-web-platform-features
+
 запустити з терміналу:
 
 1)cd anime_to_real
@@ -17,3 +20,5 @@ real-time відтворення аніме-емоцій через браузе
 На даний час можна використати лише "Start Video".
 
 В майбутньому можливі покращення(відтоворення аніме-емоцій на картинках і т.п.)
+
+Програма натхненна роботою https://github.com/kevinisbest/FrontEnd-EmotionDetection
