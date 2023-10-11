@@ -20,7 +20,7 @@ To get started with RealEmo, follow these simple steps:
 2. Open your terminal and navigate to the RealEmo project directory:
 
    ```bash
-   cd real-emo
+   cd RealEmo
    ```
 
 3. Launch the server using Python's HTTP server module:
