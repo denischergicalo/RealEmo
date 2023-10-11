@@ -40,7 +40,3 @@ To get started with RealEmo, follow these simple steps:
 ## Project Significance
 
 RealEmo showcases the power of server-independent computing and the scalability of web-based applications. This project's potential impact extends beyond its technical achievements, as it opens up possibilities for various real-world applications, such as healthcare, education, and customer service, where accurate facial recognition and emotion analysis play vital roles.
-
-## Acknowledgments
-
-This project draws inspiration from the work of [FrontEnd-EmotionDetection](https://github.com/kevinisbest/FrontEnd-EmotionDetection), and we aim to build upon that foundation for future developments.
