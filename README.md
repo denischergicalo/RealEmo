@@ -32,7 +32,7 @@ To get started with RealEmo, follow these simple steps:
 4. Open your browser and go to:
 
    ```url
-   http://localhost:8000/
+   http://localhost:8000/src/MobileNetWebcam.html
    ```
 
 5. Select the "MobileNetWebcam" option to begin real-time facial recognition and emotion analysis. The engaging user interface will guide you through the process, encouraging you to display your real emotions and contribute to more accurate data collection.
