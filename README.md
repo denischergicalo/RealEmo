@@ -1,6 +1,6 @@
 # RealEmo
 
-RealEmo is a project developed as part of the "November Hackathon Online by Hackathon Expert Group," aimed at showcasing the potential of real-time facial recognition and emotion analysis through web browsers. This project highlights the independence of server computing and the scalability of the program.
+RealEmo is a project developed as part of the "November Hackathon Online by Hackathon Expert Group", aimed at showcasing the potential of real-time facial recognition and emotion analysis through web browsers. This project highlights the independence of server computing and the scalability of the program.
 
 ## Features
 
